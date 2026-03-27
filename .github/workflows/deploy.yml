@@ -1,0 +1,34 @@
+name: Deploy Worker
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH and Update Worker
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            # 1. Enter the worker directory
+            cd /home/cbhud/ret-app/ret-worker
+            
+            # 2. Force the local code to match GitHub exactly
+            # This ensures no stray files or manual edits break the build
+            git fetch origin main
+            git reset --hard origin/main
+            
+            # 3. Go back to the root to run Docker Compose
+            cd ..
+            
+            # 4. Rebuild ONLY the worker service
+            # Docker will only rebuild if the files in ret-worker actually changed
+            docker compose up -d --build worker
+            
+            # 5. Clean up old image versions
+            docker image prune -f
