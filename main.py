@@ -9,7 +9,8 @@ import logging
 import os
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends, Security
+from fastapi.security import APIKeyHeader
 from pydantic import BaseModel
 from curl_cffi import requests as cffi_requests
 from groq import Groq
@@ -26,6 +27,14 @@ logger = logging.getLogger("ret-worker")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 if not GROQ_API_KEY:
     raise RuntimeError("GROQ_API_KEY is not set in environment variables.")
+
+INTERNAL_API_KEY = os.getenv("INTERNAL_API_KEY", "dev-internal-key")
+api_key_header = APIKeyHeader(name="X-Internal-Api-Key", auto_error=True)
+
+async def verify_api_key(api_key: str = Security(api_key_header)):
+    if api_key != INTERNAL_API_KEY:
+        raise HTTPException(status_code=403, detail="Could not validate internal API key")
+    return api_key
 
 groq_client = Groq(api_key=GROQ_API_KEY)
 
@@ -215,7 +224,7 @@ def categorize_items(item_names: list[str], categories: list[str] | None = None)
 
 
 # ── Main endpoint ─────────────────────────────────────────────────────
-@app.post("/extract", response_model=ExtractResponse)
+@app.post("/extract", response_model=ExtractResponse, dependencies=[Depends(verify_api_key)])
 async def extract_receipt(request: ExtractRequest):
     """
     Full pipeline:
