@@ -1,7 +1,7 @@
 """
 RET Worker — Python FastAPI microservice.
 Bridges the Montenegrin Tax Administration API and Groq AI categorization.
-Called by the Spring Boot backend on POST /extract.
+Called by the Spring Boot backend on POST /extract...
 """
 
 import json
