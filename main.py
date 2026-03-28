@@ -1,7 +1,7 @@
 """
 RET Worker — Python FastAPI microservice.
 Bridges the Montenegrin Tax Administration API and Groq AI categorization.
-Called by the Spring Boot backend on POST /extract.
+Called by the Spring Boot backend on POST /extract...
 """
 
 import json
@@ -97,9 +97,22 @@ def fetch_invoice_from_tax_api(iic: str, tin: str, date_time_created: str) -> di
         "Referer": TAX_LANDING_URL,
     }
 
-    # Step 1 — collect WAF cookies
+    import time
+
+    # Step 1 — collect WAF cookies (with aggressive retries for network drops)
     logger.info("Visiting landing page to collect cookies…")
-    session.get(TAX_LANDING_URL, headers={"User-Agent": USER_AGENT})
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            # Short 8-second timeout to quickly bail out if the WAF tarpits us
+            session.get(TAX_LANDING_URL, headers={"User-Agent": USER_AGENT}, timeout=8)
+            break
+        except Exception as e:
+            if attempt == max_retries - 1:
+                logger.error("Failed to connect to Tax API landing page after 3 attempts.")
+                raise HTTPException(status_code=504, detail="Tax API is currently unresponsive. Please try again later.")
+            logger.warning("Connection attempt %d failed. Retrying in 1s...", attempt + 1)
+            time.sleep(1)
 
     # Step 2 — POST to the API (form-urlencoded, NOT json — per mpi.py)
     payload = {
@@ -108,7 +121,18 @@ def fetch_invoice_from_tax_api(iic: str, tin: str, date_time_created: str) -> di
         "dateTimeCreated": date_time_created,
     }
     logger.info("Sending POST to tax API for IIC=%s", iic)
-    response = session.post(TAX_API_URL, data=payload, headers=headers)
+    
+    response = None
+    for attempt in range(max_retries):
+        try:
+            response = session.post(TAX_API_URL, data=payload, headers=headers, timeout=12)
+            break
+        except Exception as e:
+            if attempt == max_retries - 1:
+                logger.error("Failed to POST to Tax API after 3 attempts.")
+                raise HTTPException(status_code=504, detail="Tax API timed out during data extraction. Please try again later.")
+            logger.warning("POST attempt %d failed. Retrying in 1s...", attempt + 1)
+            time.sleep(1)
 
     # Detect WAF block
     if "Request Rejected" in response.text:
