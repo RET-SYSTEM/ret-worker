@@ -24,9 +24,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger("ret-worker")
 
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-if not GROQ_API_KEY:
-    raise RuntimeError("GROQ_API_KEY is not set in environment variables.")
+API_KEY = os.getenv("MISTRAL_API_KEY") or os.getenv("GROQ_API_KEY")
+if not API_KEY:
+    raise RuntimeError("API_KEY is not set in environment variables (tried MISTRAL_API_KEY and GROQ_API_KEY).")
 
 INTERNAL_API_KEY = os.getenv("INTERNAL_API_KEY", "dev-internal-key")
 api_key_header = APIKeyHeader(name="X-Internal-Api-Key", auto_error=True)
@@ -36,9 +36,9 @@ async def verify_api_key(api_key: str = Security(api_key_header)):
         raise HTTPException(status_code=403, detail="Could not validate internal API key")
     return api_key
 
-openrouter_client = OpenAI(
-    base_url="https://openrouter.ai/api/v1",
-    api_key=GROQ_API_KEY
+mistral_client = OpenAI(
+    base_url="https://api.mistral.ai/v1",
+    api_key=API_KEY
 )
 
 TAX_LANDING_URL = "https://mapr.tax.gov.me/ic/"
@@ -217,8 +217,8 @@ def categorize_items(item_names: list[str], categories: list[str] | None = None)
     products_list = "\n".join(f"- {n}" for n in item_names)
 
     try:
-        completion = openrouter_client.chat.completions.create(
-            model="openrouter/auto",
+        completion = mistral_client.chat.completions.create(
+            model="open-mistral-nemo",
             messages=[
                 {
                     "role": "system",
@@ -242,11 +242,11 @@ def categorize_items(item_names: list[str], categories: list[str] | None = None)
         raw_text = completion.choices[0].message.content
         mapping = json.loads(raw_text)
 
-        logger.info("OpenRouter categorization result: %s", mapping)
+        logger.info("Mistral categorization result: %s", mapping)
         return mapping
 
     except Exception as e:
-        logger.warning("Groq categorization failed (%s). Defaulting to 'Uncategorized'.", e)
+        logger.warning("Mistral categorization failed (%s). Defaulting to 'Uncategorized'.", e)
         return {name: "Uncategorized" for name in item_names}
 
 
