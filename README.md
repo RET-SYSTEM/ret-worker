@@ -2,12 +2,12 @@
 
 This repository contains the Python-based microservice for the Montenegro Expense Tracker (RET) system. 
 
-It acts as the intermediary between the Spring Boot backend, the Montenegrin Tax API, and the Groq LLM API. It is specifically designed to bypass aggressive Web Application Firewalls (WAF) and to execute high-speed, dynamic AI categorization.
+The AI Worker acts as the intermediary between the Spring Boot backend, the Montenegrin Tax API, and the OpenRouter AI ecosystem. It is specifically designed to bypass aggressive Web Application Firewalls (WAF) and to execute high-speed, dynamic AI categorization.
 
 ## 🚀 Key Responsibilities
 
 1. **WAF Bypass (Scraping):** The Montenegrin Tax API (`https://mapr.tax.gov.me/ic/`) is protected by an F5 BIG-IP WAF that aggressively blocks standard HTTP clients (like Java's `RestClient` or Python's standard `requests`). This worker utilizes `curl_cffi` to impersonate a Chrome 120 browser, performing a two-step handshake to safely extract the raw JSON receipt data.
-2. **AI Categorization:** Once the raw receipt is extracted, the worker feeds the item names (in the Montenegrin language) into the Groq API (powered by `llama-3.3-70b-versatile`). It dynamically categorizes each item based on the specific custom categories provided by the Spring Boot backend.
+2. **AI Categorization:** Once the raw receipt is extracted, the worker feeds the item names (in the Montenegrin language) into OpenRouter (powered by `meta-llama/llama-3.3-70b-instruct`). It dynamically categorizes each item based on the specific custom categories provided by the Spring Boot backend.
 3. **Data Normalization:** It flattens and normalizes the heavily nested government JSON into a clean schema before returning it to the Spring Boot backend for database persistence.
 
 ## 🛠️ Tech Stack

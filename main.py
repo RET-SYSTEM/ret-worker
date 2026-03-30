@@ -13,7 +13,7 @@ from fastapi import FastAPI, HTTPException, Depends, Security
 from fastapi.security import APIKeyHeader
 from pydantic import BaseModel
 from curl_cffi import requests as cffi_requests
-from groq import Groq
+from openai import OpenAI
 
 # ── Bootstrap ─────────────────────────────────────────────────────────
 load_dotenv()
@@ -36,7 +36,10 @@ async def verify_api_key(api_key: str = Security(api_key_header)):
         raise HTTPException(status_code=403, detail="Could not validate internal API key")
     return api_key
 
-groq_client = Groq(api_key=GROQ_API_KEY)
+openrouter_client = OpenAI(
+    base_url="https://openrouter.ai/api/v1",
+    api_key=GROQ_API_KEY
+)
 
 TAX_LANDING_URL = "https://mapr.tax.gov.me/ic/"
 TAX_API_URL = "https://mapr.tax.gov.me/ic/api/verifyInvoice"
@@ -214,8 +217,8 @@ def categorize_items(item_names: list[str], categories: list[str] | None = None)
     products_list = "\n".join(f"- {n}" for n in item_names)
 
     try:
-        completion = groq_client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+        completion = openrouter_client.chat.completions.create(
+            model="openrouter/auto",
             messages=[
                 {
                     "role": "system",
@@ -239,7 +242,7 @@ def categorize_items(item_names: list[str], categories: list[str] | None = None)
         raw_text = completion.choices[0].message.content
         mapping = json.loads(raw_text)
 
-        logger.info("Groq categorization result: %s", mapping)
+        logger.info("OpenRouter categorization result: %s", mapping)
         return mapping
 
     except Exception as e:
