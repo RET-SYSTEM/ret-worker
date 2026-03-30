@@ -235,7 +235,7 @@ def categorize_items(item_names: list[str], categories: list[str] | None = None)
                 },
             ],
             temperature=0.0,
-            max_completion_tokens=1024,
+            max_tokens=1024,
             response_format={"type": "json_object"},
         )
 
